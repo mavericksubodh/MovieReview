@@ -28,7 +28,7 @@ class MovieRecommender:
             print(f"An error occurred during initialization: {e}")
             raise
 
-    def recommend(self, query, top_k=5, min_runtime=None, max_runtime=None, genres=None, release_era=None, min_budget=None, min_revenue=None):
+    def recommend(self, query, top_k=5, min_runtime=None, max_runtime=None, genres=None, release_era=None, min_budget=None, min_revenue=None, audience=None):
         """
         Finds the top_k most relevant movies for a given query, with optional filtering.
         """
@@ -40,7 +40,6 @@ class MovieRecommender:
         
         query_embedding = self.model.encode([query], convert_to_tensor=False)
         
-        # Fetch a much larger pool of candidates to allow for effective filtering.
         num_candidates = top_k * 50
         distances, indices = self.index.search(np.array(query_embedding), num_candidates)
         
@@ -57,13 +56,25 @@ class MovieRecommender:
                 continue
             if min_revenue is not None and (movie.get('revenue') is None or movie['revenue'] < min_revenue):
                 continue
-            if release_era is not None and movie.get('releaseEra') != release_era:
+            if release_era is not None and movie.get('releaseEra', '').lower() != release_era.lower():
                 continue
-            if genres is not None:
-                movie_genres = movie.get('genres', '').lower()
-                if not any(g.lower() in movie_genres for g in genres):
-                    continue
+            if audience is not None and movie.get('Audience', '').lower() != audience.lower():
+                continue
             
+            if genres is not None:
+                try:
+                    movie_genres_list = json.loads(movie.get('genres', '[]'))
+                    if not isinstance(movie_genres_list, list):
+                        continue
+                    
+                    genre_names = {g['name'].lower() for g in movie_genres_list if 'name' in g}
+                    requested_genres = {g.lower() for g in genres}
+                    
+                    if not requested_genres.intersection(genre_names):
+                        continue
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
             results.append(movie)
             
             if len(results) == top_k:
@@ -91,19 +102,22 @@ if __name__ == '__main__':
         for movie in recommendations_2:
             print(f"  Title: {movie['title']} (Runtime: {movie.get('runtime', 'N/A')} mins)")
 
-        # --- Example Query 3: Complex query with multiple filters ---
-        print("\n--- 3. Complex Query with Multiple Filters ---")
-        complex_query = "a film with a complex plot"
+        # --- Example Query 3: Complex query with realistic filters ---
+        print("\n--- 3. Complex Query with Realistic Filters ---")
+        complex_query = "A mind-bending science fiction movie about dreams, reality, or time travel"
+        
         recommendations_3 = recommender.recommend(
             complex_query, 
             top_k=3, 
             genres=["Science Fiction"], 
-            release_era="2010s",
-            min_revenue=500000000 # $500M
+            release_era="Modern" # Adjusted to match the data
         )
-        for movie in recommendations_3:
-            print(f"  Title: {movie['title']} (Era: {movie.get('releaseEra')}, Revenue: ${movie.get('revenue', 0):,})")
-
+        
+        if recommendations_3:
+            for movie in recommendations_3:
+                print(f"  Title: {movie['title']} (Era: {movie.get('releaseEra')}, Genres: {movie.get('genres')})")
+        else:
+            print("  No movies found matching the specific criteria.")
 
     except Exception as e:
         print(f"Failed to run recommendation example: {e}")

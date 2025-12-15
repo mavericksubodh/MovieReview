@@ -1,63 +1,67 @@
-import sqlite3
-import os
-import sys
-from dotenv import load_dotenv
-# from GenericAgent import GenericAgent
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
-load_dotenv()
+from recommender import MovieRecommender
 
-# question = sys.argv[1] if len(sys.argv) > 1 else None
-# if not question:
-#     print('Usage: python main.py "YOUR_QUESTION"')
-#     sys.exit(1)
+# --- 1. Initialize the FastAPI app ---
+app = FastAPI(
+    title="Movie Recommender API",
+    description="An API that recommends movies based on semantic search and metadata filtering.",
+    version="1.0.0"
+)
 
-# agent = GenericAgent(
-#     # provider=os.getenv("provider", "openai"),
-#     provider=os.getenv("provider", "gemini"),
-#     project_id=os.getenv("GOOGLE_CLOUD_PROJECT"),
-#     openai_api_key=os.getenv("OPENAI_API_KEY"),
-# )
+# --- 2. Load the recommender model (Singleton Pattern) ---
+recommender = MovieRecommender()
 
-# agent.generate_content(question)
+# --- 3. Define Request and Response Models using Pydantic ---
+class RecommendationRequest(BaseModel):
+    """The request body for the /recommend endpoint."""
+    query: str = Field(..., description="The user's search query (e.g., 'a movie about space').")
+    top_k: int = Field(5, gt=0, le=20, description="The number of recommendations to return.")
+    min_runtime: Optional[int] = Field(None, gt=0, description="The minimum runtime in minutes.")
+    max_runtime: Optional[int] = Field(None, gt=0, description="The maximum runtime in minutes.")
+    genres: Optional[List[str]] = Field(None, description="A list of genres to include.")
+    release_era: Optional[str] = Field(None, description="The release era (e.g., 'Modern', '2010s').")
+    min_budget: Optional[int] = Field(None, gt=0, description="The minimum budget of the movie.")
+    min_revenue: Optional[int] = Field(None, gt=0, description="The minimum revenue of the movie.")
+    audience: Optional[str] = Field(None, description="The audience rating (e.g., 'PG13', 'Adult Only').")
 
+class MovieResponse(BaseModel):
+    """The response model for a single movie recommendation."""
+    movieId: int
+    title: str
+    overview: Optional[str]
+    genres: Optional[str]
+    releaseEra: Optional[str]
+    runtime: Optional[int]
+    revenue: Optional[int]
+    budget: Optional[int]
+    Audience: Optional[str]
 
-#
-# agent = GenericAgent(provider="gemini")
-# agent.generate_content("Hello from Gemini!")
-#
-# agent = GenericAgent(provider="openai")
-# agent.generate_content("Hello from Gemini!")
+# --- 4. Create the API Endpoint ---
+@app.post("/recommend/", response_model=List[MovieResponse])
+def get_recommendations(request: RecommendationRequest):
+    """
+    Takes a user query and filters, and returns a list of recommended movies.
+    """
+    recommendations = recommender.recommend(
+        query=request.query,
+        top_k=request.top_k,
+        min_runtime=request.min_runtime,
+        max_runtime=request.max_runtime,
+        genres=request.genres,
+        release_era=request.release_era,
+        min_budget=request.min_budget,
+        min_revenue=request.min_revenue,
+        audience=request.audience
+    )
+    return recommendations
 
+@app.get("/", include_in_schema=False)
+def root():
+    return {"message": "Movie Recommender API is running. Go to /docs for documentation."}
 
-# movie_db= ['db/movies_attributes_v2.db','db/ratings.db']
-# movie_db= ['db/ratings.db']
-movie_db= ['db/movies_attributes_v2.db']
-
-# model = SentenceTransformer('all-MiniLM-L6-v2')
-# index = faiss.IndexFlatL2(model.get_sentence_embedding_dimension())
-
-
-def get_db_data(db):
-    try:
-        with sqlite3.connect(db) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables=cursor.fetchall()
-            print(f"Tables in {db}: {tables}")
-
-            for table in tables :
-                table_name = table[0]
-                cursor.execute(f"SELECT * FROM {table_name};")
-                # cursor.execute(f"SELECT userId, count(*) as rating_count  FROM {table_name} group by userId ORDER BY rating_count DESC;")
-                records=cursor.fetchall()
-                print(f"records: {records}")
-
-    except sqlite3.Error as error:
-        print(f"Error while connecting to {db}: {error}")
-
-
-for db in movie_db :
-    get_db_data(db)
+# To run this application:
+# 1. Install FastAPI and Uvicorn: pip install fastapi "uvicorn[standard]"
+# 2. Run the server: uvicorn main:app --reload

@@ -2,7 +2,7 @@ import sqlite3
 
 # movie_db= ['db/movies_attributes_v2.db','db/ratings.db']
 # movie_db= ['db/ratings.db']
-movie_db= ['/db/movies.db']
+movie_db= ['db/movies_attributes_v2.db']
 
 for db in movie_db :
     try:
