@@ -1,0 +1,45 @@
+Role : You are a movie data analyst. Analyze movies data shared below and generate 3 additional attributes for each movie. Data provided is in pipe delimited csv format and first line will represent header -
+
+Data :
+movieId|imdbId|title| overview|productionCompanies|releaseDate|budget|revenue|runtime|language|genres|status
+2|Ariel|[{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}]|1988-10-21|Taisto Kasurinen is a Finnish coal miner whose father has just committed suicide and who is framed for a crime he did not commit. In jail, he starts to dream about leaving the country and starting a new life. He escapes from prison but things don't go as planned...
+3|Shadows in Paradise|[{"id": 18, "name": "Drama"}, {"id": 35, "name": "Comedy"}]|1986-10-16|An episode in the life of Nikander, a garbage man, involving the death of a co-worker, an affair and much more.
+5|Four Rooms|[{"id": 80, "name": "Crime"}, {"id": 35, "name": "Comedy"}]|1995-12-09|It's Ted the Bellhop's first night on the job...and the hotel's very unusual guests are about to place him in some outrageous predicaments. It seems that this evening's room service is serving up one unbelievable happening after another.
+6|Judgment Night|[{"id": 28, "name": "Action"}, {"id": 53, "name": "Thriller"}, {"id": 80, "name": "Crime"}]|1993-10-15|While racing to a boxing match, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat &amp; mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama
+11|Star Wars|[{"id": 12, "name": "Adventure"}, {"id": 28, "name": "Action"}, {"id": 878, "name": "Science Fiction"}]|1977-05-25|Princess Leia is captured and held hostage by the evil Imperial forces in their effort to take over the galactic Empire. Venturesome Luke Skywalker and dashing captain Han Solo team together with the loveable robot duo R2-D2 and C-3PO to rescue the beautiful princess and restore peace and justice in the Empire.
+12|Finding Nemo|[{"id": 16, "name": "Animation"}, {"id": 10751, "name": "Family"}]|2003-05-30|Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist's office aquarium. It's up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.
+13|Forrest Gump|[{"id": 35, "name": "Comedy"}, {"id": 18, "name": "Drama"}, {"id": 10749, "name": "Romance"}]|1994-07-06|A man with a low IQ has accomplished great things in his life and been present during significant historic events - in each case, far exceeding what anyone imagined he could do. Yet, despite all the things he has attained, his one true love eludes him. 'Forrest Gump' is the story of a man who rose above his challenges, and who proved that determination, courage, and love are more important than ability.
+14|American Beauty|[{"id": 18, "name": "Drama"}]|1999-09-15|Lester Burnham, a depressed suburban father in a mid-life crisis, decides to turn his hectic life around after developing an infatuation with his daughter's attractive friend.
+15|Citizen Kane|[{"id": 9648, "name": "Mystery"}, {"id": 18, "name": "Drama"}]|1941-04-30|Newspaper magnate, Charles Foster Kane is taken from his mother as a boy and made the ward of a rich industrialist. As a result, every well-meaning, tyrannical or self-destructive move he makes for the rest of his life appears in some way to be a reaction to that deeply wounding event.
+16|Dancer in the Dark|[{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}, {"id": 10402, "name": "Music"}]|2000-05-17|Selma, a Czech immigrant on the verge of blindness, struggles to make ends meet for herself and her son, who has inherited the same genetic disorder and will suffer the same fate without an expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping life's troubles - even if just for a moment - by dreaming up little numbers to the rhythmic beats of her surroundings.
+
+
+Task : For each movie, analyze the provided data and return these 3 attributes:
+
+1. **genreDiversity**: Categorize based on the number of genres
+   - "Single-Genre" if exactly 1 genre
+   - "Multi-Genre" if 2-3 genres
+   - "Genre-Blend" if 4 or more genres
+   - If genres data is missing or empty, use "Unknown"
+
+2. **releaseEra**: Categorize by release year (extract year from releaseDate)
+   - "Classic" if year < 1980
+   - "80s-90s" if year 1980-1999
+   - "2000s" if year 2000-2009
+   - "Modern" if year >= 2010
+   - If releaseDate is missing, use "Unknown"
+
+3. **Audience**: club the overview with genres to estimate audience of a movie.
+   - "Family" if movies can be watched by kids -
+   - "PG13"  Movie may have moderately complex plot, but does not have violence, nudity, horror
+   - "Adult Only" if movie has violence, horror, nudity etc or has complex plot
+   - If you can not ascertain Audience use "Discretion Required"
+
+Instructions:
+CRITICAL REQUIREMENTS:
+- Return ONLY valid JSON in this exact format:
+  {"movies": [{"movieId": 1, "genreDiversity": "...", "releaseEra": "...", "Audience": "..."}]}
+- Include 10 movies in the response array
+- Use EXACT string values as specified above (case-sensitive, no variations)
+- For each movie, ensure all 3 attributes are present
+- Handle missing/null data gracefully using the "Unknown" or appropriate default value
