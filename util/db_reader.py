@@ -17,10 +17,10 @@ for db in movie_db :
                 cursor.execute(f"SELECT * FROM {table_name}")
                 # cursor.execute(f"SELECT userId, count(*) as rating_count  FROM {table_name} group by userId ORDER BY rating_count DESC;")
                 # cursor.execute(f"select * from {table_name} where title like '%Shutter%' ")
-                # cursor.execute(f"-- select * from {table_name} where  movieID=11324")
-                cursor.execute(f"SELECT movieId FROM {table_name}")
+                # cursor.execute(f"select * from {table_name} where  movieID=10885")
+                # cursor.execute(f"SELECT count(*) FROM {table_name}")
                 records=cursor.fetchall()
-                print(f"records: {records}")
+                print(f"records from {table_name} : {records}")
 
 
     except sqlite3.Error as error:

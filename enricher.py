@@ -23,7 +23,7 @@ class MovieEnricher:
         # Create a dictionary for quick lookups: {movieId: avg_rating}
         return pd.Series(df.avg_rating.values, index=df.movieId).to_dict()
 
-    def enrich_movies(self, movies_df: pd.DataFrame, batch_size: int = 20) -> pd.DataFrame:
+    def enrich_movies(self, movies_df: pd.DataFrame, batch_size: int = 200) -> pd.DataFrame:
         """
         Enriches a DataFrame of movies in batches to improve efficiency.
         """

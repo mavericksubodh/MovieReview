@@ -3,3 +3,5 @@
 __pycache__/
 *.faiss
 .DS_Store
+db/movies_attributes_v2.db
+usage.md
