@@ -35,13 +35,55 @@ class Summarizer:
         if user_ratings.empty:
             return f"No ratings found for user ID: {user_id}"
 
+        # Get all movie IDs from ratings
         movie_ids = user_ratings['movieId'].tolist()
+        total_ratings = len(movie_ids)
+        
+        # Get movie details for those movie IDs
         movie_details = self.get_movie_details(movie_ids)
-
-        ratings_data = user_ratings.to_dict('records')
+        
+        # Get the set of movie IDs that have details
+        movies_with_details = set(movie_details['movieId'].tolist()) if not movie_details.empty else set()
+        
+        # Filter ratings to only include movies that have details
+        filtered_ratings = user_ratings[user_ratings['movieId'].isin(movies_with_details)]
+        
+        # Calculate missing movies
+        missing_movie_ids = set(movie_ids) - movies_with_details
+        ratings_with_details = len(filtered_ratings)
+        
+        # Warn about missing movies
+        if missing_movie_ids:
+            print(f"Warning: {len(missing_movie_ids)} rating(s) excluded due to missing movie details (movieIds: {sorted(missing_movie_ids)})")
+        
+        if filtered_ratings.empty:
+            return f"No ratings found with corresponding movie details for user ID: {user_id}"
+        
+        # Inform user about filtering
+        if ratings_with_details < total_ratings:
+            print(f"Analyzing {ratings_with_details} out of {total_ratings} ratings (movies with available details)")
+        else:
+            print(f"Analyzing all {ratings_with_details} ratings")
+        
+        # Convert to dictionaries for prompt
+        ratings_data = filtered_ratings.to_dict('records')
         movie_details_data = movie_details.to_dict('records')
-
-        prompt = self.prompts.build_summary_prompt(user_id, ratings_data, movie_details_data)
+        
+        # Ensure ratings and movie details are properly matched
+        # Create a mapping of movieId to movie details for quick lookup
+        movie_details_dict = {movie['movieId']: movie for movie in movie_details_data}
+        
+        # Verify all ratings have corresponding movie details
+        verified_ratings = []
+        for rating in ratings_data:
+            movie_id = rating['movieId']
+            if movie_id in movie_details_dict:
+                verified_ratings.append(rating)
+        
+        if not verified_ratings:
+            return f"No valid ratings with movie details found for user ID: {user_id}"
+        
+        prompt = self.prompts.build_summary_prompt(user_id, verified_ratings, movie_details_data)
         system_message = self.prompts.get_summary_system_message()
 
         summary = self.llm_client.generate(prompt, system_message, json_mode=True)
