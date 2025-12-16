@@ -8,30 +8,51 @@ class Recommender:
     def __init__(self):
         self.llm_client = LLMClient()
         self.prompts = Prompts()
-        # No longer storing a single connection object
     
     def get_enriched_movies(self):
-        """Fetches all enriched movies from the database."""
-        # Establish a connection here, for this specific task
+        """
+        Fetches all enriched movies and JOINS them with the original movie
+        data to create a complete dataset for the LLM.
+        """
         conn = get_db_connection(MOVIES_DB_PATH)
+        
+        # This JOIN query is the key to fixing the recommendation logic.
+        query = """
+            SELECT
+                m.movieId,
+                m.title,
+                m.overview,
+                m.genres,
+                me.sentiment,
+                me.budget_tier,
+                me.revenue_tier,
+                me.production_effectiveness,
+                me.age_category
+            FROM
+                movies AS m
+            JOIN
+                movies_enriched AS me ON m.movieId = me.movieId;
+        """
+        
         try:
-            df = pd.read_sql_query("SELECT * FROM movies_enriched", conn)
+            df = pd.read_sql_query(query, conn)
             conn.close()
             return df
         except pd.io.sql.DatabaseError:
             conn.close()
-            print("Error: 'movies_enriched' table not found. Please run the 'enrich' command first.")
+            print("Error: 'movies_enriched' table not found or query failed. Please run the 'enrich' command first.")
             return pd.DataFrame()
 
     def recommend(self, query):
         """Generates movie recommendations based on a user query."""
+        # Now this function gets the complete, joined data.
         enriched_movies = self.get_enriched_movies()
         if enriched_movies.empty:
             return "No enriched movie data available to generate recommendations."
 
         # To avoid overwhelming the LLM, let's use a sample of the enriched data
         if len(enriched_movies) > 200:
-            enriched_movies = enriched_movies.sample(n=200)
+            enriched_movies = enriched_movies.sample(n=200, random_state=1) # Using random_state for reproducibility
 
         movies_data = enriched_movies.to_dict('records')
         

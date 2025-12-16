@@ -1,39 +1,60 @@
 import argparse
 import pandas as pd
-# Import the new get_all_movies function
-from database import get_movie_sample, save_enriched_data, get_all_movies
+# Import the new get_existing_enriched_movie_ids function
+from database import get_movie_sample, save_enriched_data, get_all_movies, get_movie_by_id, get_existing_enriched_movie_ids
 from enricher import MovieEnricher
 from llm_client import LLMClient
 from recommender import Recommender
 from summarizer import Summarizer
 from comparator import Comparator
 
-def enrich_data(sample_size, process_all):
-    """Enrich movie data and save it to the database."""
-    if process_all:
+def enrich_data(sample_size, process_all, movie_id):
+    """Enrich movie data intelligently, avoiding re-processing."""
+    
+    # 1. Get the list of movies to potentially process
+    if movie_id:
+        print(f"Fetching specific movie with ID: {movie_id}...")
+        movies_df = get_movie_by_id(movie_id)
+    elif process_all:
         print("Fetching all movies from the database...")
         movies_df = get_all_movies()
     else:
-        print(f"Fetching a sample of {sample_size} movies...")
+        print(f"Fetching a random sample of {sample_size} movies...")
         movies_df = get_movie_sample(sample_size)
     
     if movies_df.empty:
-        print("No movies found to enrich.")
+        print("No movies found to process.")
         return
 
-    print(f"Found {len(movies_df)} movies to enrich.")
+    # 2. Get the list of movies that are ALREADY enriched
+    print("Checking for already enriched movies to avoid re-processing...")
+    existing_ids = get_existing_enriched_movie_ids()
     
+    # 3. Filter the DataFrame to only include movies that have NOT been enriched yet
+    original_count = len(movies_df)
+    movies_to_process_df = movies_df[~movies_df['movieId'].isin(existing_ids)]
+    new_count = len(movies_to_process_df)
+    
+    print(f"Found {original_count} movies. After filtering, there are {new_count} new movies to enrich.")
+
+    if movies_to_process_df.empty:
+        print("All selected movies have already been enriched. Nothing to do.")
+        return
+
+    # 4. Proceed with enriching only the new movies
     print("Initializing LLM client and movie enricher...")
     llm_client = LLMClient()
     enricher = MovieEnricher(llm_client)
     
-    print("Enriching movies... (This may take a long time)")
-    enriched_df = enricher.enrich_movies(movies_df)
+    print(f"Enriching {new_count} new movie(s)...")
+    enriched_df = enricher.enrich_movies(movies_to_process_df)
     
-    print("Saving enriched data to the database...")
-    save_enriched_data(enriched_df)
-    
-    print("Data enrichment complete.")
+    if not enriched_df.empty:
+        print("Saving new enriched data to the database...")
+        save_enriched_data(enriched_df)
+        print("Data enrichment complete.")
+    else:
+        print("Enrichment process did not return any data to save.")
 
 def recommend_movies(query):
     """Get movie recommendations based on a query."""
@@ -65,9 +86,9 @@ def main():
 
     # Enrich data command
     enrich_parser = subparsers.add_parser("enrich", help="Enrich movie data")
-    enrich_parser.add_argument("--sample_size", type=int, default=50, help="Number of movies to enrich (ignored if --all is used)")
-    # Add the --all flag
+    enrich_parser.add_argument("--sample_size", type=int, default=50, help="Number of movies to enrich")
     enrich_parser.add_argument("--all", action="store_true", help="Process all movies in the database")
+    enrich_parser.add_argument("--movie_id", type=int, help="Process a single specific movie by its ID")
 
     # Recommend movies command
     recommend_parser = subparsers.add_parser("recommend", help="Get movie recommendations")
@@ -84,7 +105,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "enrich":
-        enrich_data(args.sample_size, args.all)
+        enrich_data(args.sample_size, args.all, args.movie_id)
     elif args.command == "recommend":
         recommend_movies(args.query)
     elif args.command == "summarize":

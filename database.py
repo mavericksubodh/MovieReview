@@ -1,7 +1,8 @@
 import sqlite3
 import pandas as pd
+from typing import List
 
-# Setting the final, correct database paths as you specified. This will not be changed again.
+# Setting the final, correct database paths.
 MOVIES_DB_PATH = 'db/movies_attributes_v2.db'
 RATINGS_DB_PATH = 'db/ratings.db'
 
@@ -10,6 +11,14 @@ def get_db_connection(db_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+def get_movie_by_id(movie_id: int):
+    """Fetches a single movie by its ID."""
+    conn = get_db_connection(MOVIES_DB_PATH)
+    query = "SELECT * FROM movies WHERE movieId = ?"
+    df = pd.read_sql_query(query, conn, params=(movie_id,))
+    conn.close()
+    return df
 
 def get_movie_sample(sample_size=50):
     """Fetches a random sample of movies from the movies database."""
@@ -27,13 +36,38 @@ def get_all_movies():
     conn.close()
     return df
 
-def save_enriched_data(df, table_name='movies_enriched'):
-    """Saves the enriched movie data to a new table in the movies database."""
-    # Enriched data is saved to the same database where the movies are stored.
+def get_existing_enriched_movie_ids() -> List[int]:
+    """
+    Fetches the IDs of all movies that are already present in the
+    movies_enriched table to avoid reprocessing them.
+    """
     conn = get_db_connection(MOVIES_DB_PATH)
-    df.to_sql(table_name, conn, if_exists='replace', index=False)
+    try:
+        # Check if the table exists first
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='movies_enriched';")
+        if cursor.fetchone() is None:
+            conn.close()
+            return [] # Return empty list if table doesn't exist
+
+        # If table exists, fetch the movieIds
+        df = pd.read_sql_query("SELECT movieId FROM movies_enriched", conn)
+        conn.close()
+        return df['movieId'].tolist()
+    except Exception as e:
+        print(f"Error fetching existing enriched IDs: {e}")
+        conn.close()
+        return []
+
+def save_enriched_data(df, table_name='movies_enriched'):
+    """
+    Saves the enriched movie data to a new table using 'append' mode.
+    This adds new data without destroying existing data.
+    """
+    conn = get_db_connection(MOVIES_DB_PATH)
+    df.to_sql(table_name, conn, if_exists='append', index=False)
     conn.close()
-    print(f"Data saved to table: {table_name} in {MOVIES_DB_PATH}")
+    print(f"Appended {len(df)} new records to table: {table_name} in {MOVIES_DB_PATH}")
 
 def get_movie_avg_rating(movie_id: int) -> float:
     """Fetches the average rating for a given movie from the ratings database."""
