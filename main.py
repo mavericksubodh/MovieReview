@@ -1,101 +1,83 @@
 import argparse
-import json
-import sys
-import os
+import pandas as pd
+from database import get_movie_sample, save_enriched_data
+from enricher import MovieEnricher
+from llm_client import LLMClient
+from recommender import Recommender
+from summarizer import Summarizer
+from comparator import Comparator
 
-try:
-    from .db import Database
-    from .llm_client import LLMClient
-    from .enricher import MovieEnricher
-    from .recommender import MovieRecommender
-    from .summarizer import UserPreferenceSummarizer
-    from .comparator import MovieComparator
-except ImportError:
-    from db import Database
-    from llm_client import LLMClient
-    from enricher import MovieEnricher
-    from recommender import MovieRecommender
-    from summarizer import UserPreferenceSummarizer
-    from comparator import MovieComparator
+def enrich_data(sample_size):
+    """Enrich movie data and save it to the database."""
+    print(f"Fetching a sample of {sample_size} movies...")
+    movies_df = get_movie_sample(sample_size)
+    
+    print("Initializing LLM client and movie enricher...")
+    llm_client = LLMClient()
+    enricher = MovieEnricher(llm_client)
+    
+    print("Enriching movies...")
+    enriched_df = enricher.enrich_movies(movies_df)
+    
+    print("Saving enriched data to the database...")
+    save_enriched_data(enriched_df)
+    
+    print("Data enrichment complete.")
 
-def enrich_command(args):
-    db = Database()
-    llm = LLMClient()
-    enricher = MovieEnricher(llm, db)
-    
-    movies_df = db.fetch_movies(limit=args.limit, offset=0)
-    print(f"Enriching {len(movies_df)} movies...")
-    enricher.enrich_movies(movies_df, args.output)
+def recommend_movies(query):
+    """Get movie recommendations based on a query."""
+    print(f"Getting recommendations for query: '{query}'")
+    recommender = Recommender()
+    recommendations = recommender.recommend(query)
+    print("Recommendations:")
+    print(recommendations)
 
-def recommend_command(args):
-    db = Database()
-    llm = LLMClient()
-    recommender = MovieRecommender(llm, args.enriched)
-    
-    movies_df = db.fetch_movies(limit=1000)
-    recommender.load_movie_details(movies_df)
-    
-    query = args.query or "Recommend action movies with high revenue and positive sentiment"
-    recommendations = recommender.recommend(query, args.top_k)
-    
-    print(f"\nRecommendations for: {query}\n")
-    print(json.dumps(recommendations, indent=2))
+def summarize_user(user_id):
+    """Summarize a user's preferences."""
+    print(f"Summarizing preferences for user ID: {user_id}")
+    summarizer = Summarizer()
+    summary = summarizer.summarize(user_id)
+    print("User Preference Summary:")
+    print(summary)
 
-def summarize_command(args):
-    db = Database()
-    llm = LLMClient()
-    summarizer = UserPreferenceSummarizer(llm, db)
-    
-    summary = summarizer.summarize(args.user_id)
-    print(f"\nUser Preference Summary for User {args.user_id}:\n")
-    print(json.dumps(summary, indent=2))
-
-def compare_command(args):
-    db = Database()
-    llm = LLMClient()
-    comparator = MovieComparator(llm, db, args.enriched)
-    
-    movie_ids = [int(x.strip()) for x in args.movie_ids.split(',')]
+def compare_movies(movie_ids):
+    """Compare two or more movies."""
+    print(f"Comparing movies with IDs: {movie_ids}")
+    comparator = Comparator()
     comparison = comparator.compare(movie_ids)
-    
-    print(f"\nMovie Comparison:\n")
-    print(json.dumps(comparison, indent=2))
+    print("Movie Comparison:")
+    print(comparison)
 
 def main():
-    parser = argparse.ArgumentParser(description='Movie Review System')
-    subparsers = parser.add_subparsers(dest='command', help='Commands')
-    
-    enrich_parser = subparsers.add_parser('enrich', help='Enrich movies with LLM')
-    enrich_parser.add_argument('--limit', type=int, default=80, help='Number of movies to enrich')
-    enrich_parser.add_argument('--output', type=str, default='data/enriched_movies.csv', help='Output CSV path')
-    
-    recommend_parser = subparsers.add_parser('recommend', help='Get movie recommendations')
-    recommend_parser.add_argument('--query', type=str, help='Recommendation query')
-    recommend_parser.add_argument('--top-k', type=int, default=5, help='Number of recommendations')
-    recommend_parser.add_argument('--enriched', type=str, default='data/enriched_movies.csv', help='Enriched movies CSV')
-    
-    summarize_parser = subparsers.add_parser('summarize-user', help='Summarize user preferences')
-    summarize_parser.add_argument('--user-id', type=int, required=True, help='User ID')
-    
-    compare_parser = subparsers.add_parser('compare', help='Compare movies')
-    compare_parser.add_argument('--movie-ids', type=str, required=True, help='Comma-separated movie IDs')
-    compare_parser.add_argument('--enriched', type=str, default='data/enriched_movies.csv', help='Enriched movies CSV')
-    
+    parser = argparse.ArgumentParser(description="Movie System CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # Enrich data command
+    enrich_parser = subparsers.add_parser("enrich", help="Enrich movie data")
+    enrich_parser.add_argument("--sample_size", type=int, default=50, help="Number of movies to enrich")
+
+    # Recommend movies command
+    recommend_parser = subparsers.add_parser("recommend", help="Get movie recommendations")
+    recommend_parser.add_argument("query", type=str, help="Recommendation query")
+
+    # Summarize user command
+    summarize_parser = subparsers.add_parser("summarize", help="Summarize user preferences")
+    summarize_parser.add_argument("user_id", type=int, help="User ID")
+
+    # Compare movies command
+    compare_parser = subparsers.add_parser("compare", help="Compare movies")
+    compare_parser.add_argument("movie_ids", type=int, nargs="+", help="List of movie IDs to compare")
+
     args = parser.parse_args()
-    
-    if not args.command:
-        parser.print_help()
-        sys.exit(1)
-    
-    if args.command == 'enrich':
-        enrich_command(args)
-    elif args.command == 'recommend':
-        recommend_command(args)
-    elif args.command == 'summarize-user':
-        summarize_command(args)
-    elif args.command == 'compare':
-        compare_command(args)
 
-if __name__ == '__main__':
+    if args.command == "enrich":
+        enrich_data(args.sample_size)
+    elif args.command == "recommend":
+        recommend_movies(args.query)
+    elif args.command == "summarize":
+        summarize_user(args.user_id)
+    elif args.command == "compare":
+        compare_movies(args.movie_ids)
+
+if __name__ == "__main__":
     main()
-

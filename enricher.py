@@ -1,24 +1,17 @@
 import json
 import pandas as pd
-from typing import List, Dict
-
-try:
-    from .llm_client import LLMClient
-    from .db import Database
-    from .prompts import Prompts
-except ImportError:
-    from llm_client import LLMClient
-    from db import Database
-    from prompts import Prompts
+from typing import Dict
+from llm_client import LLMClient
+from prompts import Prompts
+import database as db
 
 class MovieEnricher:
-    def __init__(self, llm_client: LLMClient, db: Database):
+    def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
-        self.db = db
     
     def enrich_movie(self, movie: Dict) -> Dict:
         movie_id = movie.get('movieId')
-        avg_rating = self.db.get_movie_avg_rating(movie_id)
+        avg_rating = db.get_movie_avg_rating(movie_id)
         
         prompt = Prompts.build_enrichment_prompt(movie, avg_rating)
         system_msg = Prompts.get_enrichment_system_message()
@@ -27,6 +20,12 @@ class MovieEnricher:
             response = self.llm.generate(prompt, system_msg, json_mode=True)
             enriched = json.loads(response)
             enriched['movieId'] = movie_id
+            
+            # Print the enriched output for review
+            print("--- Enriched Data ---")
+            print(json.dumps(enriched, indent=2))
+            print("-----------------------")
+            
             return enriched
         except Exception as e:
             print(f"Error enriching movie {movie_id}: {e}")
@@ -39,17 +38,13 @@ class MovieEnricher:
                 "age_category": "adult"
             }
     
-    def enrich_movies(self, movies_df: pd.DataFrame, output_path: str = "data/enriched_movies.csv"):
+    def enrich_movies(self, movies_df: pd.DataFrame) -> pd.DataFrame:
         enriched_list = []
         
         for idx, row in movies_df.iterrows():
             movie_dict = row.to_dict()
-            enriched = self.enrich_movie(movie_dict)
-            enriched_list.append(enriched)
-            print(f"Enriched {idx+1}/{len(movies_df)}: {movie_dict.get('title')}")
+            print(f"\nEnriching {idx+1}/{len(movies_df)}: {movie_dict.get('title')}")
+            enriched_data = self.enrich_movie(movie_dict)
+            enriched_list.append(enriched_data)
         
-        enriched_df = pd.DataFrame(enriched_list)
-        enriched_df.to_csv(output_path, index=False)
-        print(f"Saved enriched data to {output_path}")
-        return enriched_df
-
+        return pd.DataFrame(enriched_list)

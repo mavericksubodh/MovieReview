@@ -53,5 +53,3 @@ Develop an LLM-integrated system for movie-related tasks (e.g., recommendations,
 ## Submission
 We prefer you upload your project to GitHub and send us a link to your repo but you can also zip up the source and send it back to us. 
 
-
-MiniLM-L6-v2 -- trained to understand languagem experts in converting sentences into embeddings. 
