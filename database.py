@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 
-# Swapped paths to match the actual table contents
+# Setting the final, correct database paths as you specified. This will not be changed again.
 MOVIES_DB_PATH = 'db/movies_attributes_v2.db'
 RATINGS_DB_PATH = 'db/ratings.db'
 
@@ -12,16 +12,24 @@ def get_db_connection(db_path):
     return conn
 
 def get_movie_sample(sample_size=50):
-    """Fetches a random sample of movies from the database."""
+    """Fetches a random sample of movies from the movies database."""
     conn = get_db_connection(MOVIES_DB_PATH)
     query = "SELECT * FROM movies ORDER BY RANDOM() LIMIT ?"
     df = pd.read_sql_query(query, conn, params=(sample_size,))
     conn.close()
     return df
 
+def get_all_movies():
+    """Fetches all movies from the movies database."""
+    conn = get_db_connection(MOVIES_DB_PATH)
+    query = "SELECT * FROM movies"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
+
 def save_enriched_data(df, table_name='movies_enriched'):
     """Saves the enriched movie data to a new table in the movies database."""
-    # The enriched data will be saved in the main movies.db file (which is ratings.db)
+    # Enriched data is saved to the same database where the movies are stored.
     conn = get_db_connection(MOVIES_DB_PATH)
     df.to_sql(table_name, conn, if_exists='replace', index=False)
     conn.close()
@@ -37,13 +45,3 @@ def get_movie_avg_rating(movie_id: int) -> float:
     if result and result['avg_rating'] is not None:
         return result['avg_rating']
     return 0.0
-
-if __name__ == '__main__':
-    # Example usage:
-    sample_df = get_movie_sample(5)
-    print("Fetched movie sample:")
-    print(sample_df.head())
-    if not sample_df.empty:
-        test_movie_id = sample_df.iloc[0]['movieId']
-        avg_rating = get_movie_avg_rating(test_movie_id)
-        print(f"Average rating for movie {test_movie_id}: {avg_rating}")

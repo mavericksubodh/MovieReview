@@ -1,22 +1,33 @@
 import argparse
 import pandas as pd
-from database import get_movie_sample, save_enriched_data
+# Import the new get_all_movies function
+from database import get_movie_sample, save_enriched_data, get_all_movies
 from enricher import MovieEnricher
 from llm_client import LLMClient
 from recommender import Recommender
 from summarizer import Summarizer
 from comparator import Comparator
 
-def enrich_data(sample_size):
+def enrich_data(sample_size, process_all):
     """Enrich movie data and save it to the database."""
-    print(f"Fetching a sample of {sample_size} movies...")
-    movies_df = get_movie_sample(sample_size)
+    if process_all:
+        print("Fetching all movies from the database...")
+        movies_df = get_all_movies()
+    else:
+        print(f"Fetching a sample of {sample_size} movies...")
+        movies_df = get_movie_sample(sample_size)
+    
+    if movies_df.empty:
+        print("No movies found to enrich.")
+        return
+
+    print(f"Found {len(movies_df)} movies to enrich.")
     
     print("Initializing LLM client and movie enricher...")
     llm_client = LLMClient()
     enricher = MovieEnricher(llm_client)
     
-    print("Enriching movies...")
+    print("Enriching movies... (This may take a long time)")
     enriched_df = enricher.enrich_movies(movies_df)
     
     print("Saving enriched data to the database...")
@@ -54,7 +65,9 @@ def main():
 
     # Enrich data command
     enrich_parser = subparsers.add_parser("enrich", help="Enrich movie data")
-    enrich_parser.add_argument("--sample_size", type=int, default=50, help="Number of movies to enrich")
+    enrich_parser.add_argument("--sample_size", type=int, default=50, help="Number of movies to enrich (ignored if --all is used)")
+    # Add the --all flag
+    enrich_parser.add_argument("--all", action="store_true", help="Process all movies in the database")
 
     # Recommend movies command
     recommend_parser = subparsers.add_parser("recommend", help="Get movie recommendations")
@@ -71,7 +84,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "enrich":
-        enrich_data(args.sample_size)
+        enrich_data(args.sample_size, args.all)
     elif args.command == "recommend":
         recommend_movies(args.query)
     elif args.command == "summarize":

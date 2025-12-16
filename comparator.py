@@ -1,21 +1,24 @@
 import pandas as pd
-from database import get_db_connection
 from llm_client import LLMClient
 from prompts import Prompts
+# Import the specific path and the connection function
+from database import get_db_connection, MOVIES_DB_PATH
 
 class Comparator:
     def __init__(self):
         self.llm_client = LLMClient()
         self.prompts = Prompts()
-        self.db_conn = get_db_connection()
 
     def get_movie_details(self, movie_ids):
-        """Fetches details for a list of movies."""
+        """Fetches details for a list of movies from the movies database."""
         if not movie_ids:
             return pd.DataFrame()
         
+        conn = get_db_connection(MOVIES_DB_PATH)
+        # The movie_ids list needs to be converted to a tuple for the query
         query = f"SELECT * FROM movies WHERE movieId IN ({','.join(['?']*len(movie_ids))})"
-        df = pd.read_sql_query(query, self.db_conn, params=movie_ids)
+        df = pd.read_sql_query(query, conn, params=tuple(movie_ids))
+        conn.close()
         return df
 
     def compare(self, movie_ids):

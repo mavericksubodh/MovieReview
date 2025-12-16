@@ -1,27 +1,32 @@
 import pandas as pd
-from database import get_db_connection
 from llm_client import LLMClient
 from prompts import Prompts
+# Import the specific paths and the connection function
+from database import get_db_connection, MOVIES_DB_PATH, RATINGS_DB_PATH
 
 class Summarizer:
     def __init__(self):
         self.llm_client = LLMClient()
         self.prompts = Prompts()
-        self.db_conn = get_db_connection()
 
     def get_user_ratings(self, user_id):
-        """Fetches a user's rating history."""
+        """Fetches a user's rating history from the ratings database."""
+        conn = get_db_connection(RATINGS_DB_PATH)
         query = "SELECT * FROM ratings WHERE userId = ?"
-        df = pd.read_sql_query(query, self.db_conn, params=(user_id,))
+        df = pd.read_sql_query(query, conn, params=(user_id,))
+        conn.close()
         return df
 
     def get_movie_details(self, movie_ids):
-        """Fetches details for a list of movies."""
+        """Fetches details for a list of movies from the movies database."""
         if not movie_ids:
             return pd.DataFrame()
         
+        conn = get_db_connection(MOVIES_DB_PATH)
+        # The movie_ids list needs to be converted to a tuple for the query
         query = f"SELECT * FROM movies WHERE movieId IN ({','.join(['?']*len(movie_ids))})"
-        df = pd.read_sql_query(query, self.db_conn, params=movie_ids)
+        df = pd.read_sql_query(query, conn, params=tuple(movie_ids))
+        conn.close()
         return df
 
     def summarize(self, user_id):

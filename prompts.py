@@ -2,12 +2,14 @@ import json
 from typing import List, Dict
 
 class Prompts:
+    # --- Single Enrichment (Original) ---
     @staticmethod
     def get_enrichment_system_message() -> str:
         return "You are a movie data analyst. Always return valid JSON only."
-    
+
     @staticmethod
     def build_enrichment_prompt(movie: Dict, avg_rating: float) -> str:
+        # This prompt is kept for reference or single-use cases
         return f"""Analyze this movie and generate 5 attributes in JSON format:
 
 Movie Title: {movie.get('title', 'N/A')}
@@ -33,7 +35,51 @@ Return ONLY valid JSON:
   "production_effectiveness": "low|medium|high",
   "age_category": "kid|teen|adult"
 }}"""
-    
+
+    # --- Batch Enrichment (New) ---
+    @staticmethod
+    def get_batch_enrichment_system_message() -> str:
+        return """You are a highly efficient movie data analyst. You will be given a JSON array of movie objects.
+For each movie object in the input array, you must generate a corresponding JSON object with the 5 requested attributes.
+Return a single JSON object with one key, "enriched_movies", which contains a JSON array of the results.
+The order of the movies in the output array MUST EXACTLY match the order of the movies in the input array."""
+
+    @staticmethod
+    def build_batch_enrichment_prompt(movies: List[Dict]) -> str:
+        movies_json_string = json.dumps(movies, indent=2)
+        return f"""Analyze the following list of movies and generate 5 attributes for each.
+
+Input Movies:
+{movies_json_string}
+
+For each movie, generate these attributes:
+1. sentiment: positive/neutral/negative (based on overview tone)
+2. budget_tier: low/medium/high (reason about industry standards)
+3. revenue_tier: low/medium/high (reason about box office performance)
+4. production_effectiveness: low/medium/high (analyze rating, budget-to-revenue ratio, and overall success)
+5. age_category: kid/teen/adult (based on content and themes)
+
+Return ONLY a single valid JSON object in the following format, with one entry for each movie from the input list, in the same order:
+{{
+  "enriched_movies": [
+    {{
+      "sentiment": "...",
+      "budget_tier": "...",
+      "revenue_tier": "...",
+      "production_effectiveness": "...",
+      "age_category": "..."
+    }},
+    {{
+      "sentiment": "...",
+      "budget_tier": "...",
+      "revenue_tier": "...",
+      "production_effectiveness": "...",
+      "age_category": "..."
+    }}
+  ]
+}}"""
+
+    # --- Other Prompts ---
     @staticmethod
     def get_recommendation_system_message() -> str:
         return "You are a movie recommendation expert. Return valid JSON with movie recommendations."
@@ -41,14 +87,18 @@ Return ONLY valid JSON:
     @staticmethod
     def build_recommendation_prompt(query: str, movies_data: List[Dict]) -> str:
         movies_json = json.dumps(movies_data, indent=2)
-        return f"""Given this enriched movie dataset, generate personalized recommendations.
+        return f"""Given the following ENRICHED MOVIE DATASET, generate personalized recommendations.
 
 User Query: {query}
 
 Movie Dataset:
 {movies_json}
 
-Analyze the dataset and recommend 5 movies that best match the user's criteria.
+IMPORTANT RULES FOR RECOMMENDATIONS:
+1.  **ONLY recommend movies that are present in the provided "Movie Dataset" above.** Do NOT invent new movies or movie IDs.
+2.  For each recommendation, the `movieId` MUST be one of the `movieId`s from the "Movie Dataset".
+3.  Analyze the dataset and recommend 5 movies that best match the user's criteria. If fewer than 5 suitable movies are found within the provided dataset, recommend only those found.
+
 For each recommendation, provide:
 - movieId
 - title
@@ -137,4 +187,3 @@ Return JSON:
     "reasoning": "why this movie is better overall"
   }}
 }}"""
-
