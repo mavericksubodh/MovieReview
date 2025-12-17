@@ -28,9 +28,6 @@ The movies table has the following columns:
 * genres: Pipe-separated list of genres (e.g., "Action|Drama").
 * status: Release status (e.g., "Released").
 
-movies : movieId|imdbId|title|overview|productionCompanies|releaseDate|budget|revenue|runtime|language|genres|status|genreDiversity|releaseEra|Audience
-
-ratings : ratingId|userId | movieId | rating | timestamp
 
 ## Tasks
 
@@ -54,4 +51,8 @@ Develop an LLM-integrated system for movie-related tasks (e.g., recommendations,
 We prefer you upload your project to GitHub and send us a link to your repo but you can also zip up the source and send it back to us. 
 
 
-MiniLM-L6-v2 -- trained to understand languagem experts in converting sentences into embeddings. 
+
+movies : movieId|imdbId|title|overview|productionCompanies|releaseDate|budget|revenue|runtime|language|genres|status|genreDiversity|releaseEra|Audience
+
+ratings : ratingId|userId | movieId | rating | timestamp
+movies_enriched : movieId|sentiment|budget_tier|revenue_tier|production_effectiveness|age_category
