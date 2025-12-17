@@ -21,6 +21,8 @@
    Provide two or more movie IDs to get a detailed, side-by-side comparison from the LLM.
          python main.py compare 1 2
                 Replace 1 and 2 with any movieIds from the movies table.
-5. Verify results using queries :
+5. Helping results for test verifications :
    sqlite3 -header -column db/movies_attributes_v2.db "SELECT * FROM movies where movieid in (10885,11324,178314)  ORDER BY movieId;"
    sqlite3 -header -column db/movies_attributes_v2.db "SELECT * FROM movies_enriched where movieid in (10885,11324,178314)  ORDER BY movieId;"
+   sqlite3 -header -column db/movies_attributes_v2.db "SELECT m.* FROM movies as m, movies_enriched me  where m.movieid = me.movieid;"
+   sqlite3 -header -column db/ratings.db "SELECT count(distinct ( movieid) ) from ratings;"  
