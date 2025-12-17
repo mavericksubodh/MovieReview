@@ -1,8 +1,8 @@
 1. add .env file with parameter - OPENAI_API_KEY=
 2. To Enrich Movie Data
    This command fetches movies from the database, enriches them with data from the LLM, and saves them to a new movies_enriched table.
-         python main.py enrich --sample_size 100
-              --sample_size is optional. It defaults to 50
+         python main.py enrich --size 100
+              --size is optional. It defaults to 50
          python main.py --all
               this will take all the movies for enrichment
          python main.py enrich --movie_id 11324
